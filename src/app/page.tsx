@@ -1,95 +1,87 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+/* eslint-disable react-hooks/exhaustive-deps */
+"use client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Heading, Spinner, VStack, useDisclosure } from "@chakra-ui/react";
+
+import Drawer from "src/components/_drawer";
+import FilterContainer from "src/components/elements/filter";
+
+// page level component
+import Transactions from "src/components/sections/dashboard/transactions";
+import Statistics from "src/components/elements/pages/statistics";
+
+import useApiHook from "src/hooks/_api-hook";
+import Search from "src/util/search";
+import type { Payment, IFilters } from "src/types";
+
+const initialFilterState = {
+  day: "",
+  date_range: {
+    from: new Date(new Date().setFullYear(new Date().getFullYear() - 2)),
+    to: new Date(),
+  },
+  status: [],
+  type: [],
+} as IFilters;
 
 export default function Home() {
+  const { financialData, loading, payments } = useApiHook();
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [filter, setFilter] = useState<IFilters>(initialFilterState);
+
+  const [filteredTransactions, setFilteredTransactions] = useState<Payment[]>(
+    []
+  );
+
+  const applyFilter = useCallback(() => {
+    if (!payments) return;
+    setFilteredTransactions(Search(payments, filter));
+    onClose();
+  }, [filter, payments, onClose]);
+
+  const handleFilterClear = () => {
+    setFilter(initialFilterState);
+  };
+
+  useEffect(() => {
+    if (!payments) return;
+    applyFilter();
+  }, [payments]);
+
+  if (loading || !financialData || !payments)
+    return (
+      <VStack justifyContent={"center"}>
+        <Spinner size={"xl"} />
+        <Heading as={"h1"} size={"small"}>
+          Preparing dashboard
+        </Heading>
+      </VStack>
+    );
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+    <>
+      <Statistics
+        payment={filteredTransactions}
+        financial_Data={financialData}
+      />
+      <Transactions
+        clear={() => {
+          setFilter(initialFilterState);
+          applyFilter();
+        }}
+        onClick={onOpen}
+        filters={filter}
+        transactions={filteredTransactions}
+      />
+      <Drawer
+        onClose={onClose}
+        isOpen={isOpen}
+        clear={() => handleFilterClear()}
+        apply={() => applyFilter()}
+      >
+        <FilterContainer selectValues={filter} select={setFilter} />
+      </Drawer>
+    </>
+  );
 }
